@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AuthLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const router = useRouter();
 
@@ -14,5 +14,10 @@ export default function AuthLayout({
     router.refresh();
   }, [router]);
 
-  return <>{children}</>;
+  return (
+    <div>
+      <header>{/* TODO: Add auth header */}</header>
+      {children}
+    </div>
+  );
 }

@@ -1,44 +1,52 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
-import { updateMe } from "@/lib/api/clientApi";
-import { useAuthStore } from "@/lib/store/authStore";
+import { useRouter } from "next/navigation";
+import { updateMe } from "../../../../lib/api/clientApi";
+import { useAuthStore } from "../../../../lib/store/authStore";
 import css from "./EditProfilePage.module.css";
+
+const fallbackAvatar =
+  "https://ac.goit.global/fullstack/react/default-avatar.jpg";
+
+const getAvatarSrc = (avatar?: string) =>
+  avatar?.startsWith("https://ac.goit.global") ? avatar : fallbackAvatar;
 
 export default function EditProfilePage() {
   const router = useRouter();
-
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-
-  const [username, setUsername] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
-  const currentUsername = username ?? user?.username ?? "";
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username);
+    }
+  }, [user]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
     try {
-      const updatedUser = await updateMe({ username: currentUsername });
+      const updatedUser = await updateMe({ username });
       setUser(updatedUser);
       router.push("/profile");
       router.refresh();
-    } catch (err) {
-      setError("Failed to update profile");
-      console.error(err);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Failed to update profile.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const handleCancel = () => {
-    router.push("/profile");
-  };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <main className={css.mainContent}>
@@ -46,7 +54,7 @@ export default function EditProfilePage() {
         <h1 className={css.formTitle}>Edit Profile</h1>
 
         <Image
-          src={user.avatar}
+          src={getAvatarSrc(user?.avatar)}
           alt="User Avatar"
           width={120}
           height={120}
@@ -60,27 +68,31 @@ export default function EditProfilePage() {
               id="username"
               type="text"
               className={css.input}
-              value={currentUsername}
+              value={username}
               onChange={(event) => setUsername(event.target.value)}
+              required
             />
           </div>
 
-          <p>Email: {user.email}</p>
+          <p>Email: {user?.email ?? ""}</p>
+          {error && <p className={css.error}>{error}</p>}
 
           <div className={css.actions}>
-            <button type="submit" className={css.saveButton}>
-              Save
+            <button
+              type="submit"
+              className={css.saveButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save"}
             </button>
             <button
               type="button"
               className={css.cancelButton}
-              onClick={handleCancel}
+              onClick={() => router.push("/profile")}
             >
               Cancel
             </button>
           </div>
-
-          {error && <p className={css.error}>{error}</p>}
         </form>
       </div>
     </main>

@@ -1,39 +1,64 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import type { Note } from "@/types/note";
-import Modal from "@/components/Modal/Modal";
-import { fetchNoteById } from "@/lib/api/clientApi";
+import { useRouter } from "next/navigation";
+import Modal from "../../../../components/Modal/Modal";
+import { fetchNoteById } from "../../../../lib/api/clientApi";
+import css from "../../../../components/NotePreview/NotePreview.module.css";
 
-type Props = {
+export interface NotePreviewClientProps {
   id: string;
-};
+}
 
-export default function NotePreviewClient({ id }: Props) {
+const NotePreviewClient = ({ id }: NotePreviewClientProps) => {
   const router = useRouter();
-
-  const { data, isPending, isError, error } = useQuery<Note>({
+  const {
+    data: note,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["note", id],
     queryFn: () => fetchNoteById(id),
-    enabled: Boolean(id),
-    refetchOnMount: false,
   });
 
+  const closeModal = () => {
+    router.back();
+  };
+
   return (
-    <Modal onClose={() => router.back()}>
-      {isPending && <p>Loading note...</p>}
+    <Modal onClose={closeModal}>
+      <div className={css.container}>
+        <div className={css.header}>
+          <h2 className={css.title}>{note?.title ?? "Note preview"}</h2>
+          <button
+            type="button"
+            className={css.closeButton}
+            onClick={closeModal}
+            aria-label="Close modal"
+          >
+            x
+          </button>
+        </div>
 
-      {isError && <p>{(error as Error).message || "Failed to load note."}</p>}
-
-      {!isPending && !isError && data && (
-        <article>
-          <h2>{data.title}</h2>
-          <p>{data.content}</p>
-          <p>Tag: {data.tag}</p>
-          <p>Created: {new Date(data.createdAt).toLocaleString()}</p>
-        </article>
-      )}
+        {isLoading && <p className={css.content}>Loading note...</p>}
+        {isError && (
+          <p className={css.content}>
+            {error instanceof Error ? error.message : "Failed to load note."}
+          </p>
+        )}
+        {note && (
+          <>
+            <p className={css.tag}>{note.tag}</p>
+            <p className={css.content}>{note.content}</p>
+            <p className={css.date}>
+              {new Date(note.createdAt).toLocaleString()}
+            </p>
+          </>
+        )}
+      </div>
     </Modal>
   );
-}
+};
+
+export default NotePreviewClient;

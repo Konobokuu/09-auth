@@ -1,21 +1,17 @@
 import type { ReactNode } from "react";
+import css from "./layout.module.css";
 
-type FilterLayoutProps = {
+export default function NotesFilterLayout({
+  children,
+  sidebar,
+}: {
   children: ReactNode;
   sidebar: ReactNode;
-};
-
-export default function FilterLayout({ children, sidebar }: FilterLayoutProps) {
+}) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: "24px",
-      }}
-    >
-      <aside style={{ minWidth: "220px" }}>{sidebar}</aside>
-      <main style={{ flex: 1 }}>{children}</main>
+    <div className={css.layout}>
+      {sidebar}
+      <div className={css.content}>{children}</div>
     </div>
   );
 }

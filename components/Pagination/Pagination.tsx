@@ -1,46 +1,44 @@
-"use client";
-
-import ReactPaginate from "react-paginate";
+import type { ComponentType } from "react";
+import ReactPaginateModule, { type ReactPaginateProps } from "react-paginate";
 import css from "./Pagination.module.css";
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
+const ReactPaginate =
+  (
+    ReactPaginateModule as unknown as {
+      default?: ComponentType<ReactPaginateProps>;
+    }
+  ).default ??
+  (ReactPaginateModule as unknown as ComponentType<ReactPaginateProps>);
+
+export interface PaginationProps {
+  pageCount: ReactPaginateProps["pageCount"];
+  onPageChange: NonNullable<ReactPaginateProps["onPageChange"]>;
+  forcePage?: ReactPaginateProps["forcePage"];
 }
 
-interface PageChangeEvent {
-  selected: number;
-}
-
-export default function Pagination({
-  currentPage,
-  totalPages,
+const Pagination = ({
+  pageCount,
   onPageChange,
-}: PaginationProps) {
-  const handlePageChange = ({ selected }: PageChangeEvent) => {
-    onPageChange(selected + 1);
-  };
+  forcePage,
+}: PaginationProps) => {
+  if (pageCount <= 1) {
+    return null;
+  }
 
   return (
     <ReactPaginate
-      pageCount={totalPages}
-      pageRangeDisplayed={3}
-      marginPagesDisplayed={1}
-      previousLabel="<"
-      nextLabel=">"
       breakLabel="..."
-      onPageChange={handlePageChange}
-      forcePage={currentPage - 1}
+      nextLabel="next >"
+      onPageChange={onPageChange}
+      pageRangeDisplayed={3}
+      pageCount={pageCount}
+      previousLabel="< previous"
+      renderOnZeroPageCount={null}
       containerClassName={css.pagination}
-      pageClassName={css.pageItem}
-      pageLinkClassName={css.pageLink}
-      previousClassName={css.pageItem}
-      previousLinkClassName={css.pageLink}
-      nextClassName={css.pageItem}
-      nextLinkClassName={css.pageLink}
       activeClassName={css.active}
-      disabledClassName={css.disabled}
+      forcePage={forcePage}
     />
   );
-}
+};
+
+export default Pagination;

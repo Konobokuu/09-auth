@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import App from "../../../components/App/App";
 
 export default function NotesPage() {
-  redirect("/notes/filter/all");
+  return <App />;
 }

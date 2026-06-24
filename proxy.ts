@@ -1,70 +1,100 @@
-import { NextRequest, NextResponse } from "next/server";
-import { checkSession } from "./lib/api/serverApi";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const privateRoutes = ["/notes", "/profile"];
-const authRoutes = ["/sign-in", "/sign-up"];
+const privateRoutes = ["/profile", "/notes"];
+const publicRoutes = ["/sign-in", "/sign-up"];
+
+const applySetCookie = (target: NextResponse, source: Response) => {
+  const setCookie = source.headers.get("set-cookie");
+
+  if (setCookie) {
+    target.headers.set("Set-Cookie", setCookie);
+  }
+
+  return target;
+};
+
+const isSessionValid = async (response: Response) => {
+  if (!response.ok) {
+    return false;
+  }
+
+  try {
+    const data = (await response.clone().json()) as { success?: boolean };
+    return data.success !== false;
+  } catch {
+    return true;
+  }
+};
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
   const accessToken = request.cookies.get("accessToken")?.value;
   const refreshToken = request.cookies.get("refreshToken")?.value;
+  const cookieHeader = request.headers.get("cookie") || "";
+  const sessionUrl = new URL("/api/auth/session", request.url);
 
   const isPrivateRoute = privateRoutes.some((route) =>
     pathname.startsWith(route),
   );
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
-
-  if (accessToken) {
-    if (isAuthRoute) {
-      return NextResponse.redirect(new URL("/", request.url));
+  if (isPrivateRoute) {
+    if (accessToken) {
+      return NextResponse.next();
     }
 
-    return NextResponse.next();
-  }
-
-  if (!accessToken && !refreshToken) {
-    if (isPrivateRoute) {
+    if (!refreshToken) {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    return NextResponse.next();
-  }
+    try {
+      const response = await fetch(sessionUrl, {
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
 
-  try {
-    const cookieHeader = request.headers.get("cookie") ?? "";
-    const response = await checkSession(cookieHeader);
-
-    const nextResponse = isAuthRoute
-      ? NextResponse.redirect(new URL("/", request.url))
-      : NextResponse.next();
-
-    const setCookieHeader = response.headers["set-cookie"];
-
-    if (setCookieHeader) {
-      if (Array.isArray(setCookieHeader)) {
-        setCookieHeader.forEach((cookie) => {
-          nextResponse.headers.append("set-cookie", cookie);
-        });
-      } else {
-        nextResponse.headers.set("set-cookie", setCookieHeader);
+      if (!(await isSessionValid(response))) {
+        return NextResponse.redirect(new URL("/sign-in", request.url));
       }
-    }
 
-    return nextResponse;
-  } catch {
-    if (isPrivateRoute) {
-      const response = NextResponse.redirect(new URL("/sign-in", request.url));
-      response.cookies.delete("accessToken");
-      response.cookies.delete("refreshToken");
-      return response;
+      return applySetCookie(NextResponse.next(), response);
+    } catch {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
     }
-
-    return NextResponse.next();
   }
+
+  if (isPublicRoute) {
+    if (accessToken) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (!refreshToken) {
+      return NextResponse.next();
+    }
+
+    try {
+      const response = await fetch(sessionUrl, {
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
+
+      if (await isSessionValid(response)) {
+        return applySetCookie(
+          NextResponse.redirect(new URL("/", request.url)),
+          response,
+        );
+      }
+    } catch {
+      // User is not authenticated, allow access to public routes
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/notes/:path*", "/profile/:path*", "/sign-in", "/sign-up"],
+  matcher: ["/profile/:path*", "/notes/:path*", "/sign-in", "/sign-up"],
 };

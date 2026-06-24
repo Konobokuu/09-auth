@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { User } from "../../types/user";
 
-interface AuthStore {
+export interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
   setUser: (user: User) => void;
@@ -11,7 +11,7 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>()((set) => ({
   user: null,
   isAuthenticated: false,
-  setUser: (user) =>
+  setUser: (user: User) =>
     set({
       user,
       isAuthenticated: true,

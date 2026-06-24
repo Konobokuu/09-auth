@@ -1,43 +1,62 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import css from "./NoteDetails.module.css";
+import { fetchNoteById } from "../../../../lib/api/clientApi";
+import css from "./NotePage.module.css";
 
-import { fetchNoteById } from "@/lib/api/clientApi";
+export interface NoteDetailsClientProps {
+  id: string;
+}
 
-type NoteDetailsClientProps = {
-  noteId: string;
-};
-
-export default function NoteDetailsClient({ noteId }: NoteDetailsClientProps) {
+const NoteDetailsClient = ({ id }: NoteDetailsClientProps) => {
   const {
     data: note,
     isLoading,
     isError,
+    error,
   } = useQuery({
-    queryKey: ["note", noteId],
-    queryFn: () => fetchNoteById(noteId),
+    queryKey: ["note", id],
+    queryFn: () => fetchNoteById(id),
   });
 
   if (isLoading) {
-    return <p className={css.container}>Loading...</p>;
+    return (
+      <main className={css.main}>
+        <div className={css.container}>Loading note...</div>
+      </main>
+    );
   }
 
-  if (isError || !note) {
-    return <p className={css.container}>Note not found</p>;
+  if (isError) {
+    return (
+      <main className={css.main}>
+        <div className={css.container}>
+          {error instanceof Error ? error.message : "Failed to load note."}
+        </div>
+      </main>
+    );
+  }
+
+  if (!note) {
+    return null;
   }
 
   return (
-    <div className={css.container}>
-      <div className={css.item}>
-        <div className={css.header}>
-          <h2>{note.title}</h2>
-        </div>
-
-        <p className={css.tag}>{note.tag}</p>
-        <p className={css.content}>{note.content}</p>
-        <p className={css.date}>{note.createdAt}</p>
+    <main className={css.main}>
+      <div className={css.container}>
+        <article className={css.item}>
+          <div className={css.header}>
+            <h2>{note.title}</h2>
+            <span className={css.tag}>{note.tag}</span>
+          </div>
+          <p className={css.content}>{note.content}</p>
+          <p className={css.date}>
+            {new Date(note.createdAt).toLocaleString()}
+          </p>
+        </article>
       </div>
-    </div>
+    </main>
   );
-}
+};
+
+export default NoteDetailsClient;

@@ -4,24 +4,20 @@ import { useEffect } from "react";
 import { checkSession, getMe } from "../../lib/api/clientApi";
 import { useAuthStore } from "../../lib/store/authStore";
 
-interface AuthProviderProps {
+export default function AuthProvider({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function AuthProvider({ children }: AuthProviderProps) {
-  const setUser = useAuthStore((state) => state.setUser);
-  const clearIsAuthenticated = useAuthStore(
-    (state) => state.clearIsAuthenticated,
-  );
+}) {
+  const { setUser, clearIsAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    const initAuth = async () => {
+    const checkAuth = async () => {
       try {
         const session = await checkSession();
 
-        if (!session) {
-          clearIsAuthenticated();
-          return;
+        if (session?.success === false) {
+          throw new Error("No active session");
         }
 
         const user = await getMe();
@@ -31,7 +27,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
-    void initAuth();
+    checkAuth();
   }, [setUser, clearIsAuthenticated]);
 
   return <>{children}</>;

@@ -1,27 +1,35 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Image from "next/image";
-import { cookies } from "next/headers";
-import { getMe } from "@/lib/api/serverApi";
+import Link from "next/link";
+import { getMe } from "../../../lib/api/serverApi";
 import css from "./ProfilePage.module.css";
 
+const fallbackAvatar =
+  "https://ac.goit.global/fullstack/react/default-avatar.jpg";
+
+const getAvatarSrc = (avatar: string) =>
+  avatar.startsWith("https://ac.goit.global") ? avatar : fallbackAvatar;
+
 export const metadata: Metadata = {
-  title: "Profile",
-  description: "User profile page in NoteHub.",
+  title: "Profile | NoteHub",
+  description: "View your NoteHub profile information.",
   openGraph: {
     title: "Profile | NoteHub",
-    description: "User profile page in NoteHub.",
+    description: "View your NoteHub profile information.",
+    url: "/profile",
+    images: [
+      {
+        url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+        width: 1200,
+        height: 630,
+        alt: "NoteHub profile page",
+      },
+    ],
   },
 };
 
 export default async function ProfilePage() {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((item) => `${item.name}=${item.value}`)
-    .join("; ");
-
-  const user = await getMe(cookieHeader);
+  const user = await getMe();
 
   return (
     <main className={css.mainContent}>
@@ -32,17 +40,15 @@ export default async function ProfilePage() {
             Edit Profile
           </Link>
         </div>
-
         <div className={css.avatarWrapper}>
           <Image
-            src={user.avatar}
+            src={getAvatarSrc(user.avatar)}
             alt="User Avatar"
             width={120}
             height={120}
             className={css.avatar}
           />
         </div>
-
         <div className={css.profileInfo}>
           <p>Username: {user.username}</p>
           <p>Email: {user.email}</p>

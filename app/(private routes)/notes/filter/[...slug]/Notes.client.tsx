@@ -1,173 +1,87 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
+import { useState } from "react";
 import Link from "next/link";
-
-import type { Note } from "@/types/note";
-import NoteList from "@/components/NoteList/NoteList";
-import Pagination from "@/components/Pagination/Pagination";
-import SearchBox from "@/components/SearchBox/SearchBox";
-
-type NotesResponse = {
-  notes: Note[];
-  totalPages: number;
-};
-
-type Props = {
-  tag: string;
-};
-
-type State = {
-  currentPage: number;
-  search: string;
-  currentTag: string;
-};
-
-type Action =
-  | { type: "setSearch"; payload: string }
-  | { type: "setPage"; payload: number }
-  | { type: "setTag"; payload: string };
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useDebouncedCallback } from "use-debounce";
+import SearchBox from "../../../../../components/SearchBox/SearchBox";
+import Pagination from "../../../../../components/Pagination/Pagination";
+import NoteList from "../../../../../components/NoteList/NoteList";
+import { fetchNotes } from "../../../../../lib/api/clientApi";
+import type { NoteTag } from "../../../../../types/note";
+import css from "../../../../../components/App/App.module.css";
 
 const PER_PAGE = 12;
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "setSearch":
-      return {
-        ...state,
-        search: action.payload,
-        currentPage: 1,
-      };
-
-    case "setPage":
-      return {
-        ...state,
-        currentPage: action.payload,
-      };
-
-    case "setTag":
-      return {
-        ...state,
-        currentTag: action.payload,
-        currentPage: 1,
-      };
-
-    default:
-      return state;
-  }
+export interface NotesClientProps {
+  tag?: NoteTag;
 }
 
-async function fetchNotes({
-  page,
-  search,
-  tag,
-}: {
-  page: number;
-  search: string;
-  tag: string;
-}): Promise<NotesResponse> {
-  const params = new URLSearchParams();
+const NotesClient = ({ tag }: NotesClientProps) => {
+  const [page, setPage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  params.set("page", String(page));
-  params.set("perPage", String(PER_PAGE));
+  const debouncedSetSearch = useDebouncedCallback((value: string) => {
+    setDebouncedSearch(value);
+    setPage(0);
+  }, 500);
 
-  if (search.trim()) {
-    params.set("search", search.trim());
-  }
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    debouncedSetSearch(value);
+  };
 
-  if (tag !== "all") {
-    params.set("tag", tag);
-  }
-
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notes?${params.toString()}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to load notes");
-  }
-
-  return res.json();
-}
-
-export default function NotesClient({ tag }: Props) {
-  const [state, dispatch] = useReducer(reducer, {
-    currentPage: 1,
-    search: "",
-    currentTag: tag,
-  });
-
-  const [debouncedSearch] = useDebounce(state.search, 300);
-
-  useEffect(() => {
-    if (state.currentTag !== tag) {
-      dispatch({ type: "setTag", payload: tag });
-    }
-  }, [tag, state.currentTag]);
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: [
-      "notes",
-      {
-        page: state.currentPage,
-        perPage: PER_PAGE,
-        search: debouncedSearch,
-        tag: state.currentTag,
-      },
-    ],
+  const {
+    data: notesData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["notes", page, debouncedSearch, tag],
     queryFn: () =>
       fetchNotes({
-        page: state.currentPage,
-        search: debouncedSearch,
-        tag: state.currentTag,
+        page: page + 1,
+        perPage: PER_PAGE,
+        search: debouncedSearch || undefined,
+        tag,
       }),
-    placeholderData: (previousData) => previousData,
+    placeholderData: keepPreviousData,
   });
 
-  const notes = data?.notes ?? [];
-  const totalPages = data?.totalPages ?? 0;
+  const handlePageChange = ({ selected }: { selected: number }) => {
+    setPage(selected);
+  };
+
+  const notes = notesData?.notes ?? [];
+  const pageCount = notesData?.totalPages ?? 0;
 
   return (
-    <section>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
-        <SearchBox
-          value={state.search}
-          onChange={(value: string) =>
-            dispatch({ type: "setSearch", payload: value })
-          }
-        />
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox value={searchQuery} onChange={handleSearchChange} />
+        {pageCount > 1 && (
+          <Pagination
+            pageCount={pageCount}
+            onPageChange={handlePageChange}
+            forcePage={page}
+          />
+        )}
+        <Link className={css.button} href="/notes/action/create">
+          Create note +
+        </Link>
+      </header>
 
-        <Link href="/notes/action/create">Create note</Link>
-      </div>
-
-      {isLoading && <p>Loading notes...</p>}
-
-      {isError && <p>{(error as Error).message || "Failed to load notes."}</p>}
-
-      {!isLoading && !isError && notes.length === 0 && <p>No notes found.</p>}
-
-      {!isLoading && !isError && notes.length > 0 && <NoteList notes={notes} />}
-
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={state.currentPage}
-          totalPages={totalPages}
-          onPageChange={(page: number) =>
-            dispatch({ type: "setPage", payload: page })
-          }
-        />
+      {isLoading && <p className={css.status}>Loading notes...</p>}
+      {isError && (
+        <p className={css.error}>
+          {error instanceof Error ? error.message : "Failed to load notes."}
+        </p>
       )}
-    </section>
+
+      {notes.length > 0 && <NoteList notes={notes} />}
+    </div>
   );
-}
+};
+
+export default NotesClient;
