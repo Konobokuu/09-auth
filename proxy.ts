@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { parseSetCookie } from "cookie";
 import type { NextRequest } from "next/server";
 
 const privateRoutes = ["/profile", "/notes"];
@@ -10,8 +8,7 @@ const applySetCookie = (target: NextResponse, source: Response) => {
   const setCookie = source.headers.get("set-cookie");
 
   if (setCookie) {
-    const parsed = parseSetCookie(setCookie);
-    target.cookies.set(parsed.name, parsed.value ?? "", parsed);
+    target.headers.set("Set-Cookie", setCookie);
   }
 
   return target;
@@ -32,9 +29,8 @@ const isSessionValid = async (response: Response) => {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("accessToken")?.value;
-  const refreshToken = cookieStore.get("refreshToken")?.value;
+  const accessToken = request.cookies.get("accessToken")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
   const cookieHeader = request.headers.get("cookie") || "";
   const sessionUrl = new URL("/api/auth/session", request.url);
 
