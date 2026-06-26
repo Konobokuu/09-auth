@@ -7,12 +7,14 @@ const privateRoutes = ["/profile", "/notes"];
 const publicRoutes = ["/sign-in", "/sign-up"];
 
 const applySetCookie = (target: NextResponse, source: Response) => {
-  const setCookie = source.headers.get("set-cookie");
+  const setCookie = source.headers.getSetCookie?.() ?? [];
 
-  if (setCookie) {
-    const parsed = parseSetCookie(setCookie);
+  const cookiesArray = Array.isArray(setCookie) ? setCookie : [setCookie];
+
+  cookiesArray.forEach((cookieStr) => {
+    const parsed = parseSetCookie(cookieStr);
     target.cookies.set(parsed.name, parsed.value ?? "", parsed);
-  }
+  });
 
   return target;
 };

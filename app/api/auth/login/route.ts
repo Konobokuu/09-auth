@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
 
       for (const cookieStr of cookieArray) {
         const parsed = parseSetCookie(cookieStr);
-        cookieStore.set(parsed.name, parsed.value, parsed);
+
+        if (parsed.value) {
+          cookieStore.set(parsed.name, parsed.value, parsed);
+        }
       }
 
       return NextResponse.json(apiRes.data, { status: apiRes.status });
