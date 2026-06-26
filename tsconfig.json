@@ -9,7 +9,7 @@
     ],
     "skipLibCheck": true,
     /* Bundler mode */
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -37,7 +37,8 @@
     "components",
     "lib",
     "types",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
